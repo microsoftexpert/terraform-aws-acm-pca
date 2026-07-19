@@ -1,0 +1,82 @@
+# ─────────────────────────────────────────────────────────────────────
+# .gitignore — Microsoftexpert tf-mod-* Terraform library modules (canonical, all libraries)
+# Modules created by Casey Wood.  Connect with him at https://www.linkedin.com/in/microsoftexpert 
+#
+# Committed on purpose — do NOT add these below:
+#   providers.tf  variables.tf  main.tf  outputs.tf  README.md  SCOPE.md
+#   .gitignore  examples/
+# ─────────────────────────────────────────────────────────────────────
+
+# ── Terraform working dir / provider plugin cache (large; never commit) ──
+.terraform/
+.terraform.tfstate.lock.info
+.terraform.d/
+
+# Dependency lock — excluded for LIBRARY modules (providers.tf already pins
+# the versions, so it is redundant here). A ROOT module WOULD commit this.
+.terraform.lock.hcl
+
+# State files — should never exist in a library module (defensive)
+*.tfstate
+*.tfstate.*
+
+# Plan artifacts and crash logs
+*.tfplan
+*.tfplan.*
+tfplan
+plan.out
+crash.log
+crash.*.log
+
+# Variable files — frequently hold secrets; not shipped with reusable modules.
+# (If you ever ship an example tfvars, add: !examples/**/*.tfvars)
+*.tfvars
+*.tfvars.json
+
+# Override and CLI-config files
+override.tf
+override.tf.json
+*_override.tf
+*_override.tf.json
+.terraformrc
+terraform.rc
+
+# ── Secrets / credentials — regulated FI (GLBA / NPI); defensive ──
+.env
+.env.*
+*.env
+*.pem
+*.pfx
+*.p12
+*.key
+id_rsa
+id_dsa
+secrets.*
+
+# ── Python (ingest / util scripts, uv) ──
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# ── Editors / IDEs ──
+.vscode/
+.idea/
+*.iml
+*.swp
+*.swo
+*~
+
+# ── OS junk ──
+.DS_Store
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# ── Misc ──
+*.bak
+*.tmp
