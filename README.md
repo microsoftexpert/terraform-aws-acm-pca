@@ -40,13 +40,13 @@ Whether it's a star, a professional connection, or a coffee, every gesture helps
 
 ```mermaid
 flowchart LR
- s3["tf-mod-aws-s3-bucket"]
- pca["tf-mod-aws-acm-pca"]
- acm["tf-mod-aws-acm"]
- iam["tf-mod-aws-iam-policy"]
- sm["tf-mod-aws-secrets-manager"]
- lb["tf-mod-aws-lb"]
- cf["tf-mod-aws-cloudfront"]
+ s3["terraform-aws-s3-bucket"]
+ pca["terraform-aws-acm-pca"]
+ acm["terraform-aws-acm"]
+ iam["terraform-aws-iam-policy"]
+ sm["terraform-aws-secrets-manager"]
+ lb["terraform-aws-lb"]
+ cf["terraform-aws-cloudfront"]
 
  s3 -->|crl_s3_bucket_name| pca
  pca -->|certificate_authority_arn| acm
@@ -58,7 +58,7 @@ flowchart LR
  style pca fill:#FF9900,color:#fff
 ```
 
-ACM PCA **consumes** only an existing CRL S3 bucket (by name) and, for subordinates, a parent CA ARN. It is **consumed** by `tf-mod-aws-acm` (as `certificate_authority_arn` for private, auto-renewing certificates), by IAM policy modules (scoping issuance rights to the CA ARN), and by any subordinate `tf-mod-aws-acm-pca` instance that names it as a parent.
+ACM PCA **consumes** only an existing CRL S3 bucket (by name) and, for subordinates, a parent CA ARN. It is **consumed** by `terraform-aws-acm` (as `certificate_authority_arn` for private, auto-renewing certificates), by IAM policy modules (scoping issuance rights to the CA ARN), and by any subordinate `terraform-aws-acm-pca` instance that names it as a parent.
 
 ---
 
@@ -66,7 +66,7 @@ ACM PCA **consumes** only an existing CRL S3 bucket (by name) and, for subordina
 
 ```mermaid
 flowchart TD
- subgraph module["tf-mod-aws-acm-pca"]
+ subgraph module["terraform-aws-acm-pca"]
  ca["aws_acmpca_certificate_authority.this<br/>keystone — PENDING_CERTIFICATE at create"]
  cert["aws_acmpca_certificate.this<br/>sign CSR (self_signed / parent_module)"]
  install["aws_acmpca_certificate_authority_certificate.this<br/>install cert → ACTIVE"]
@@ -147,7 +147,7 @@ The Terraform identity needs the following actions (least-privilege; scope to th
 ## 📁 Module Structure
 
 ```text
-tf-mod-aws-acm-pca/
+terraform-aws-acm-pca/
 ├── providers.tf # required_providers (aws >= 6.0, < 7.0); no provider block
 ├── variables.tf # name, CA config, type, usage/key-storage, revocation, activation, issued certs, permission, policy, tags
 ├── main.tf # CA + sign + install + issued (for_each) + permission + policy
@@ -164,7 +164,7 @@ Smallest working call — a self-signed **root** CA, activated in one apply:
 
 ```hcl
 module "root_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-internal-root"
   type = "ROOT"
@@ -202,10 +202,10 @@ module "root_ca" {
 
 | Input | Type | Source module |
 |---|---|---|
-| `revocation.crl.s3_bucket_name` | `string` (bucket **name**, not ARN) | `tf-mod-aws-s3-bucket` (`.id`) |
-| `activation.parent_certificate_authority_arn` | `string` (CA ARN) | a parent `tf-mod-aws-acm-pca` instance |
+| `revocation.crl.s3_bucket_name` | `string` (bucket **name**, not ARN) | `terraform-aws-s3-bucket` (`.id`) |
+| `activation.parent_certificate_authority_arn` | `string` (CA ARN) | a parent `terraform-aws-acm-pca` instance |
 | `activation.signed_certificate` / `certificate_chain` | `string` (PEM) | caller-supplied (offline/enterprise root) — not a sibling module |
-| `policy` | `string` (JSON) | `tf-mod-aws-iam-policy` document or `jsonencode` |
+| `policy` | `string` (JSON) | `terraform-aws-iam-policy` document or `jsonencode` |
 
 > This module deliberately does **not** consume a KMS key — ACM PCA manages its own HSM-backed key material and exposes no `kms_key_id` argument. See [Architecture Notes](#-architecture-notes).
 
@@ -214,11 +214,11 @@ module "root_ca" {
 | Output | Description | Consumed by |
 |---|---|---|
 | `id` | CA ARN (identical to `arn`) | Any module/policy referencing this CA |
-| `arn` | CA ARN — `arn:<partition>:acm-pca:<region>:<account>:certificate-authority/<uuid>` | `tf-mod-aws-acm` (`certificate_authority_arn`), `tf-mod-aws-iam-policy`, subordinate CA `parent_certificate_authority_arn` |
+| `arn` | CA ARN — `arn:<partition>:acm-pca:<region>:<account>:certificate-authority/<uuid>` | `terraform-aws-acm` (`certificate_authority_arn`), `terraform-aws-iam-policy`, subordinate CA `parent_certificate_authority_arn` |
 | `certificate_signing_request` | Base64 PEM CSR for the CA's own cert | External signing workflows; the in-module self/parent signing flow |
 | `certificate` / `certificate_chain` | Installed CA certificate (and chain, subordinate only) | Audit / trust-chain verification |
 | `not_before` / `not_after` / `serial` | CA validity window and serial (post-activation) | Certificate-lifecycle monitoring |
-| `issued_certificate_arns` / `issued_certificates` | Map of end-entity cert ARNs (and PEM material) | Workload TLS config, `tf-mod-aws-secrets-manager` |
+| `issued_certificate_arns` / `issued_certificates` | Map of end-entity cert ARNs (and PEM material) | Workload TLS config, `terraform-aws-secrets-manager` |
 | `acm_permission_policy` | IAM policy JSON of the ACM permission (when created) | Audit |
 | `tags_all` | All tags incl. provider `default_tags` | Governance / audit |
 
@@ -231,7 +231,7 @@ module "root_ca" {
 
 ```hcl
 module "root_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-internal-root"
   type = "ROOT"
@@ -262,7 +262,7 @@ provider "aws" {
 }
 
 module "root_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-internal-root"
   type = "ROOT"
@@ -292,14 +292,14 @@ module "root_ca" {
 ```hcl
 # The CRL bucket + a bucket policy for acm-pca.amazonaws.com must exist first.
 module "crl_bucket" {
-  source      = "git::https://github.com/microsoftexpert/tf-mod-aws-s3-bucket?ref=v1.0.0"
+  source      = "git::https://github.com/microsoftexpert/terraform-aws-s3-bucket?ref=v1.0.0"
   bucket_name = "casey-pca-crl"
   #... attach a bucket policy granting acm-pca.amazonaws.com
   # s3:PutObject / s3:PutObjectAcl / s3:GetBucketAcl / s3:GetBucketLocation...
 }
 
 module "root_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-internal-root"
   type = "ROOT"
@@ -333,7 +333,7 @@ module "root_ca" {
 ```hcl
 # Parent root CA (must be ACTIVE before the subordinate is applied).
 module "root_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-internal-root"
   type = "ROOT"
@@ -347,7 +347,7 @@ module "root_ca" {
 
 # Subordinate issuing CA — its CSR is signed by the root above.
 module "issuing_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-issuing"
   type = "SUBORDINATE"
@@ -375,7 +375,7 @@ module "issuing_ca" {
 # Have the offline enterprise root sign sub.csr, producing sub.pem + chain.pem.
 # 2) Second apply: supply the signed PEM to complete activation.
 module "issuing_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-enterprise-issuing"
   type = "SUBORDINATE"
@@ -399,7 +399,7 @@ module "issuing_ca" {
 
 ```hcl
 module "issuing_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-issuing"
   type = "SUBORDINATE"
@@ -419,7 +419,7 @@ module "issuing_ca" {
 
 # An ACM private certificate that renews itself:
 # module "cert" {
-# source = ".../tf-mod-aws-acm?ref=v1.0.0"
+# source = ".../terraform-aws-acm?ref=v1.0.0"
 # domain_name = "api.internal.casey"
 # certificate_authority_arn = module.issuing_ca.arn
 # }
@@ -431,7 +431,7 @@ module "issuing_ca" {
 
 ```hcl
 module "issuing_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-issuing"
   type = "SUBORDINATE"
@@ -479,7 +479,7 @@ data "aws_iam_policy_document" "share" {
 }
 
 module "issuing_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-shared-issuing"
   type = "SUBORDINATE"
@@ -503,7 +503,7 @@ module "issuing_ca" {
 
 ```hcl
 module "issuing_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-issuing"
   type = "SUBORDINATE"
@@ -534,7 +534,7 @@ module "issuing_ca" {
 # ⚠️ Overrides the secure default. The CRL object becomes publicly readable.
 # Only for CAs whose CRL must be fetchable by external parties. Document it.
 module "public_facing_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-public-issuing"
   type = "SUBORDINATE"
@@ -566,7 +566,7 @@ module "public_facing_ca" {
 # ⚠️ Caps issued-certificate validity at 7 days and changes billing.
 # Trades revocation tooling for expiry-based invalidation. Document the tradeoff.
 module "short_lived_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name       = "casey-shortlived-issuing"
   type       = "SUBORDINATE"
@@ -590,7 +590,7 @@ module "short_lived_ca" {
 
 ```hcl
 module "root_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-internal-root"
   type = "ROOT"
@@ -616,7 +616,7 @@ module "root_ca" {
 # until you install a signed certificate yourself. Only use when the signing
 # ceremony is orchestrated entirely outside Terraform.
 module "pending_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-manual-root"
   type = "ROOT"
@@ -636,13 +636,13 @@ module "pending_ca" {
 ```hcl
 # 1) CRL bucket (a bucket policy for acm-pca.amazonaws.com is attached in the bucket module)
 module "crl_bucket" {
-  source      = "git::https://github.com/microsoftexpert/tf-mod-aws-s3-bucket?ref=v1.0.0"
+  source      = "git::https://github.com/microsoftexpert/terraform-aws-s3-bucket?ref=v1.0.0"
   bucket_name = "casey-pca-crl"
 }
 
 # 2) Root CA — self-signed, revocation-enabled, FIPS Level 3
 module "root_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-internal-root"
   type = "ROOT"
@@ -657,7 +657,7 @@ module "root_ca" {
 
 # 3) Subordinate issuing CA — signed by the root, ACM auto-renewal enabled
 module "issuing_ca" {
-  source = "git::https://github.com/microsoftexpert/tf-mod-aws-acm-pca?ref=v1.0.0"
+  source = "git::https://github.com/microsoftexpert/terraform-aws-acm-pca?ref=v1.0.0"
 
   name = "casey-issuing"
   type = "SUBORDINATE"
@@ -679,14 +679,14 @@ module "issuing_ca" {
 
 # 4) An ACM private certificate that renews itself, fronting internal TLS
 module "internal_cert" {
-  source                    = "git::https://github.com/microsoftexpert/tf-mod-aws-acm?ref=v1.0.0"
+  source                    = "git::https://github.com/microsoftexpert/terraform-aws-acm?ref=v1.0.0"
   domain_name               = "api.internal.casey"
   certificate_authority_arn = module.issuing_ca.arn # private, auto-renewing
 }
 
 # 5) The ALB HTTPS listener uses the private certificate
 module "alb" {
-  source          = "git::https://github.com/microsoftexpert/tf-mod-aws-lb?ref=v1.0.0"
+  source          = "git::https://github.com/microsoftexpert/terraform-aws-lb?ref=v1.0.0"
   name            = "internal-api"
   certificate_arn = module.internal_cert.arn
   #... vpc_id, subnet_ids, security_group...
@@ -734,9 +734,9 @@ module "alb" {
  2. `aws_acmpca_certificate.this` — signs the CSR (root self-sign → `certificate_authority_arn = this.arn`; subordinate → the parent's ARN). Resolved in a **single apply** — no cycle, since the CA never references the certificate.
  3. `aws_acmpca_certificate_authority_certificate.this` — installs the signed cert (and chain, for subordinates) → **ACTIVE**. `certificate_chain` is **required for SUBORDINATE, forbidden for ROOT**; the module sets it to `null` for root regardless of mode.
 - **Force-new / immutable fields.** The entire `certificate_authority_configuration` (`key_algorithm`, `signing_algorithm`, every `subject.*`) and `type` are **FORCE-NEW** — there is no in-place key rotation or subject-DN change. "Rotating" a private CA means standing up a new CA and re-chaining beneath it.
-- **No customer-managed KMS key.** `aws_acmpca_certificate_authority` exposes no `kms_key_id`/CMK argument — key material is HSM-backed and governed by `key_storage_security_standard`. Wiring a `tf-mod-aws-kms` ARN here fails `terraform validate` (unsupported argument). CMK encryption belongs on the **destination** (e.g. the CRL S3 bucket), not the CA.
+- **No customer-managed KMS key.** `aws_acmpca_certificate_authority` exposes no `kms_key_id`/CMK argument — key material is HSM-backed and governed by `key_storage_security_standard`. Wiring a `terraform-aws-kms` ARN here fails `terraform validate` (unsupported argument). CMK encryption belongs on the **destination** (e.g. the CRL S3 bucket), not the CA.
 - **`tags` ↔ `tags_all` ↔ `default_tags`.** Only `aws_acmpca_certificate_authority` is taggable; `aws_acmpca_certificate`, `_authority_certificate`, `_permission`, and `_policy` expose no `tags`. `var.tags` (merged with a default `Name = var.name`, which `var.tags` can override) flows to the CA; `tags_all` is the computed merge over provider `default_tags` (resource tags win).
-- **`aws_acmpca_certificate` is not renewable.** Certificates issued via `issued_certificates` must be **replaced**, not renewed. For auto-renewal, wire `tf-mod-aws-acm`'s `certificate_authority_arn` (which is why `create_acm_service_permission` exists).
+- **`aws_acmpca_certificate` is not renewable.** Certificates issued via `issued_certificates` must be **replaced**, not renewed. For auto-renewal, wire `terraform-aws-acm`'s `certificate_authority_arn` (which is why `create_acm_service_permission` exists).
 - **`aws_acmpca_permission.principal` accepts only `acm.amazonaws.com`.** Despite the resource name, it is not a general service-principal grant; cross-account sharing goes through `policy` (`aws_acmpca_policy`).
 - **Destroy ordering.** Permissions/policy are torn down before the CA by the dependency graph. A CA must be disabled from `ACTIVE` before deletion; the provider handles the disable-then-delete, subject to the `permanent_deletion_time_in_days` soft-delete window. Deleting the CRL S3 bucket before the CA is removed can strand the CA — remove the CA first.
 - **Region.** ACM PCA is **regional** — no us-east-1 global constraint (unlike CloudFront/WAFv2/ACM-for-CloudFront). The Region comes from the caller's provider.
@@ -836,7 +836,7 @@ tags_all = {
 - AWS Private CA User Guide — creating and activating a CA, certificate templates, CRL/OCSP revocation
 - AWS Private CA — Storage and security compliance of AWS Private CA private keys (Region FIPS-level support)
 - AWS Private CA — audit reports (`CreateCertificateAuthorityAuditReport`)
-- module suite — `tf-mod-aws-acm`, `tf-mod-aws-s3-bucket`, `tf-mod-aws-iam-policy`, `tf-mod-aws-secrets-manager`, `tf-mod-aws-lb`
+- module suite — `terraform-aws-acm`, `terraform-aws-s3-bucket`, `terraform-aws-iam-policy`, `terraform-aws-secrets-manager`, `terraform-aws-lb`
 
 ---
 

@@ -1,4 +1,4 @@
-# tf-mod-aws-acm-pca — SCOPE
+# terraform-aws-acm-pca — SCOPE
 
 Composite **security** module for an AWS Certificate Manager Private Certificate
 Authority (ACM PCA / "AWS Private CA"). It owns the private CA itself, its
@@ -34,7 +34,7 @@ The module manages **all** of the following (allow-list):
   flips CA status from `PENDING_CERTIFICATE` to `ACTIVE`
 - `aws_acmpca_permission` — grants an AWS service principal (in practice only
   `acm.amazonaws.com`) permission to call `IssueCertificate` /
-  `GetCertificate` / `ListPermissions` against the CA, so `tf-mod-aws-acm`
+  `GetCertificate` / `ListPermissions` against the CA, so `terraform-aws-acm`
   certificates backed by this CA can auto-renew
 - `aws_acmpca_policy` — attaches a resource-based IAM policy to the CA,
   enabling cross-account sharing of issuance rights (e.g. via AWS RAM /
@@ -54,10 +54,10 @@ Referenced by `arn`/`id`, never created here:
   a direct CA encryption key the way it is for S3/RDS/EBS. Where a
   caller-supplied CMK is genuinely required (e.g. audit-report or CRL bucket
   encryption), it is wired through the **destination** module
-  (`tf-mod-aws-s3-bucket`), not through this module. See "Secure-by-default
+  (`terraform-aws-s3-bucket`), not through this module. See "Secure-by-default
   decisions" for how encryption is actually enforced here.
 - **S3 bucket for CRL storage** — `aws_s3_bucket` and its bucket policy are
-  owned by `tf-mod-aws-s3-bucket`; this module only consumes the bucket's
+  owned by `terraform-aws-s3-bucket`; this module only consumes the bucket's
   `id`/`arn` to populate `crl_configuration.s3_bucket_name`. The **caller is
   responsible** for attaching an S3 bucket policy granting
   `acm-pca.amazonaws.com` `s3:PutObject`/`s3:GetBucketAcl`/`s3:GetBucketLocation`
@@ -73,10 +73,10 @@ Referenced by `arn`/`id`, never created here:
   than produced by an in-module `aws_acmpca_certificate` resource. This module
   supports both paths (see `variables.tf` design).
 - **IAM roles/policies for callers** who need to invoke `acm-pca:IssueCertificate`
-  etc. — owned by `tf-mod-aws-iam-role` / `tf-mod-aws-iam-policy`; this module
+  etc. — owned by `terraform-aws-iam-role` / `terraform-aws-iam-policy`; this module
   only emits the CA `arn` for those policies to reference.
 - **AWS Certificate Manager (public/private-issued) certificates consumed by
-  ALB/CloudFront** — owned by `tf-mod-aws-acm`, which references this module's
+  ALB/CloudFront** — owned by `terraform-aws-acm`, which references this module's
   CA `arn` via its own `certificate_authority_arn` argument for
   ACM-private-CA-backed certs.
 
@@ -84,10 +84,10 @@ Referenced by `arn`/`id`, never created here:
 
 | Input (as authored) | Type | Source module |
 |---|---|---|
-| `revocation.crl.s3_bucket_name` | `string` (bucket name, not ARN — the provider argument is `s3_bucket_name`) | `tf-mod-aws-s3-bucket` (`.id` / bucket name output) |
-| `activation.parent_certificate_authority_arn` (mode `"parent_module"`) | `string` (CA ARN) | a parent `tf-mod-aws-acm-pca` instance (`arn` output) |
+| `revocation.crl.s3_bucket_name` | `string` (bucket name, not ARN — the provider argument is `s3_bucket_name`) | `terraform-aws-s3-bucket` (`.id` / bucket name output) |
+| `activation.parent_certificate_authority_arn` (mode `"parent_module"`) | `string` (CA ARN) | a parent `terraform-aws-acm-pca` instance (`arn` output) |
 | `activation.signed_certificate` / `activation.certificate_chain` (mode `"external"`) | `string` (PEM) | Caller-supplied (offline/enterprise root CA) — not a sibling module |
-| `policy` | `string` (JSON) | `tf-mod-aws-iam-policy` document / `jsonencode()` |
+| `policy` | `string` (JSON) | `terraform-aws-iam-policy` document / `jsonencode()` |
 
 > This module does **not** consume a KMS key ARN — see "Out-of-scope
 > resources" above for why the seed brief's `kms_key_arn` input was removed.
@@ -174,12 +174,12 @@ Least-privilege actions the Terraform identity needs:
 | Output | Description | Consumed by |
 |---|---|---|
 | `id` | CA ARN (ACM PCA's `id` and `arn` are the same ARN string) | Any module/policy referencing this CA |
-| `arn` | CA ARN — `arn:aws:acm-pca:<region>:<account>:certificate-authority/<uuid>` | `tf-mod-aws-acm` (`certificate_authority_arn` for ACM-Private-CA-backed certs), `tf-mod-aws-iam-policy` (resource policies scoped to this CA), `tf-mod-aws-acmpca-permission`/policy callers |
+| `arn` | CA ARN — `arn:aws:acm-pca:<region>:<account>:certificate-authority/<uuid>` | `terraform-aws-acm` (`certificate_authority_arn` for ACM-Private-CA-backed certs), `terraform-aws-iam-policy` (resource policies scoped to this CA), `terraform-aws-acmpca-permission`/policy callers |
 | `certificate_signing_request` | Base64 PEM-encoded CSR for the CA's own certificate — required input to sign the CA (root self-sign or subordinate parent-sign) | Root-CA self-activation flow (`aws_acmpca_certificate` in this module); external signing workflows (exported for an offline enterprise root to sign) |
 | `certificate` | Base64-encoded installed CA certificate (only populated after activation) | Audit / verification |
 | `certificate_chain` | Base64-encoded installed CA certificate chain (subordinate CAs only) | Audit / trust-chain verification |
 | `not_before` / `not_after` / `serial` | CA validity window and serial (only populated post-activation) | Certificate lifecycle monitoring |
-| `issued_certificate_arns` | Map of ARNs for any end-entity certificates issued via the `issued_certificates` child collection | Workload TLS configuration, `tf-mod-aws-secrets-manager` (storing issued cert/key material) |
+| `issued_certificate_arns` | Map of ARNs for any end-entity certificates issued via the `issued_certificates` child collection | Workload TLS configuration, `terraform-aws-secrets-manager` (storing issued cert/key material) |
 | `issued_certificates` | Map of key => `{ arn, certificate, certificate_chain }` (public PEM) | Workload TLS configuration |
 | `acm_permission_policy` | IAM policy JSON of the ACM permission when `create_acm_service_permission = true`; null otherwise | Audit |
 | `tags_all` | All tags incl. provider `default_tags` | Governance/audit |
@@ -262,7 +262,7 @@ Key sequencing facts verified against the live provider schema
 2. For a **subordinate CA**, the CSR is still `aws_acmpca_certificate_authority.this.certificate_signing_request`
    (the subordinate's own CSR), but `certificate_authority_arn` on the
    `aws_acmpca_certificate` resource points at the **parent** CA's ARN (either
-   a sibling `tf-mod-aws-acm-pca` module instance, or a `var.parent_certificate_authority_arn`
+   a sibling `terraform-aws-acm-pca` module instance, or a `var.parent_certificate_authority_arn`
    pointing outside this module). The parent CA must already be `ACTIVE`
    (i.e., past its own two-step activation) before it can sign anything —
    this creates a strict cross-module ordering: **root module instance must
@@ -315,12 +315,12 @@ Key sequencing facts verified against the live provider schema
 - **No `kms_key_id`/CMK argument exists on `aws_acmpca_certificate_authority`**
   in the current provider schema — ACM PCA manages its own HSM-backed key
   material via `key_storage_security_standard`, not customer-supplied KMS
-  keys. Do not attempt to wire a `tf-mod-aws-kms` ARN directly into this
+  keys. Do not attempt to wire a `terraform-aws-kms` ARN directly into this
   resource; it will fail `terraform validate` (unsupported argument).
 - **`aws_acmpca_certificate` is not renewable.** Certificates issued by this
   resource must be replaced (new resource, new serial), not renewed in place.
   For auto-renewing certificates backed by a private CA, wire
-  `tf-mod-aws-acm`'s `certificate_authority_arn` at the ACM certificate
+  `terraform-aws-acm`'s `certificate_authority_arn` at the ACM certificate
   layer instead (which is why `aws_acmpca_permission` granting
   `acm.amazonaws.com` exists — it is specifically for that ACM-managed
   renewal path).

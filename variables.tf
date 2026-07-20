@@ -325,7 +325,7 @@ EOT
 #
 # Ad-hoc certificates issued directly off this CA once it is ACTIVE. NOTE:
 # aws_acmpca_certificate is NOT renewable — issued certificates must be replaced,
-# not renewed. For auto-renewing certificates, wire tf-mod-aws-acm's
+# not renewed. For auto-renewing certificates, wire terraform-aws-acm's
 # certificate_authority_arn to this CA instead (and set create_acm_service_permission).
 ###############################################################################
 
@@ -382,7 +382,7 @@ variable "create_acm_service_permission" {
 Whether to grant the ACM service principal (acm.amazonaws.com) the
 IssueCertificate / GetCertificate / ListPermissions actions on this CA via
 aws_acmpca_permission. Required so that ACM-managed certificates backed by this
-private CA (tf-mod-aws-acm with certificate_authority_arn set) can AUTO-RENEW.
+private CA (terraform-aws-acm with certificate_authority_arn set) can AUTO-RENEW.
 Defaults to false. acm.amazonaws.com is the only principal AWS accepts here.
 EOT
  type = bool

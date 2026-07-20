@@ -13,8 +13,8 @@ output "id" {
 output "arn" {
  description = <<EOT
 The ARN of the certificate authority (cross-resource reference type). Wire into
-tf-mod-aws-acm (certificate_authority_arn for ACM-Private-CA-backed certs),
-tf-mod-aws-iam-policy (resource-scoped issuance policies), and any subordinate
+terraform-aws-acm (certificate_authority_arn for ACM-Private-CA-backed certs),
+terraform-aws-iam-policy (resource-scoped issuance policies), and any subordinate
 CA's activation.parent_certificate_authority_arn.
 EOT
  value = aws_acmpca_certificate_authority.this.arn
